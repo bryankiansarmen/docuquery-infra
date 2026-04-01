@@ -1,0 +1,5 @@
+apiVersion: v2
+name: helm-common
+description: Shared Helm library for docuquery services
+type: library
+version: 1.0.0
