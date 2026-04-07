@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: docuquery-dev
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:8.5.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5601
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch-master:9200"
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            failureThreshold: 20
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            successThreshold: 3
+            timeoutSeconds: 5
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  http () {
+                    local path="${1}"
+                    set -- -XGET -s --fail -L
+                    STATUS=$(curl --output /dev/null --write-out "%{http_code}" -k "$@" "http://localhost:5601${path}")
+                    if [[ "${STATUS}" -eq 200 ]]; then
+                      exit 0
+                    fi
+                    echo "Error: Got HTTP code ${STATUS} but expected a 200"
+                    exit 1
+                  }
+                  http "/app/kibana"
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 5
+            exec:
+              command:
+                - bash
+                - -c
+                - |
+                  STATUS=$(curl --output /dev/null --write-out "%{http_code}" -k "http://localhost:5601/app/kibana")
+                  [[ "${STATUS}" -eq 200 ]]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: docuquery-dev
+  labels:
+    app: kibana
+spec:
+  selector:
+    app: kibana
+  type: NodePort
+  ports:
+    - port: 5601
+      targetPort: 5601
+      protocol: TCP
+      name: http
+      nodePort: 30056

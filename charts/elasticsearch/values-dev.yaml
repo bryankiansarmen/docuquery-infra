@@ -1,0 +1,39 @@
+replicas: 1
+
+esJavaOpts: "-Xmx512m -Xms512m"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+volumeClaimTemplate:
+  resources:
+    requests:
+      storage: 5Gi
+
+protocol: http
+clusterHealthCheckParams: "wait_for_status=yellow&timeout=1s"
+
+createCert: false
+
+esConfig:
+  elasticsearch.yml: |
+    xpack.security.enabled: false
+    xpack.security.http.ssl.enabled: false
+    xpack.security.transport.ssl.enabled: false
+    cluster.name: elasticsearch
+    network.host: 0.0.0.0
+
+readinessProbe:
+  failureThreshold: 10
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  successThreshold: 3
+  timeoutSeconds: 5
+
+service:
+  type: ClusterIP
